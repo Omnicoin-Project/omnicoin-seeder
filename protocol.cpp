@@ -1,15 +1,12 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2011 The Bitcoin developers
+// Copyright (c) 2009-2012 The Bitcoin developers
+// Copyright (c) 2011-2012 Litecoin Developers
 // Distributed under the MIT/X11 software license, see the accompanying
-// file license.txt or http://www.opensource.org/licenses/mit-license.php.
-
-#include <vector>
-#include <stdexcept>
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "protocol.h"
 #include "util.h"
 #include "netbase.h"
-
 
 #ifndef WIN32
 # include <arpa/inet.h>
@@ -21,8 +18,6 @@ static const char* ppszTypeName[] =
     "tx",
     "block",
 };
-
-unsigned char pchMessageStart[4] = { 0xf9, 0xbe, 0xb4, 0xd9 };
 
 CMessageHeader::CMessageHeader()
 {
@@ -96,11 +91,7 @@ void CAddress::Init()
 {
     nServices = NODE_NETWORK;
     nTime = 100000000;
-}
-
-void CAddress::print() const
-{
-    printf("CAddress(%s)\n", ToString().c_str());
+    nLastTry = 0;
 }
 
 CInv::CInv()
@@ -117,7 +108,7 @@ CInv::CInv(int typeIn, const uint256& hashIn)
 
 CInv::CInv(const std::string& strType, const uint256& hashIn)
 {
-    int i;
+    unsigned int i;
     for (i = 1; i < ARRAYLEN(ppszTypeName); i++)
     {
         if (strType == ppszTypeName[i])
@@ -127,7 +118,7 @@ CInv::CInv(const std::string& strType, const uint256& hashIn)
         }
     }
     if (i == ARRAYLEN(ppszTypeName))
-        throw std::out_of_range("CInv::CInv(string, uint256) : unknown type");
+        throw std::out_of_range(strprintf("CInv::CInv(string, uint256) : unknown type '%s'", strType.c_str()));
     hash = hashIn;
 }
 
@@ -138,22 +129,23 @@ bool operator<(const CInv& a, const CInv& b)
 
 bool CInv::IsKnownType() const
 {
-    return (type >= 1 && type < ARRAYLEN(ppszTypeName));
+    return (type >= 1 && type < (int)ARRAYLEN(ppszTypeName));
 }
 
 const char* CInv::GetCommand() const
 {
     if (!IsKnownType())
-        throw std::out_of_range("CInv::GetCommand() : unknown type");
+        throw std::out_of_range(strprintf("CInv::GetCommand() : type=%d unknown type", type));
     return ppszTypeName[type];
 }
 
 std::string CInv::ToString() const
 {
-    return "CInv()";
+    return strprintf("%s %s", GetCommand(), hash.ToString().substr(0,20).c_str());
 }
 
 void CInv::print() const
 {
-    printf("CInv\n");
+    printf("CInv(%s)\n", ToString().c_str());
 }
+
